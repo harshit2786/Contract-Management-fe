@@ -14,19 +14,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "./ui/select";
 import { SelectValue } from "@radix-ui/react-select";
 import { Editor } from "@monaco-editor/react";
 import axios from "axios";
+import { useSocket } from "@/hooks/useSockets";
 
 export default function ContractDialog({
   type,
   contract,
   isOpen,
-  setIsOpen
+  setIsOpen,
 }: {
   type: "update" | "create";
   contract?: Contract;
   isOpen : boolean;
-  setIsOpen : (e : boolean) => void
-  
+  setIsOpen : (e : boolean) => void,
 }) {
+  const socket = useSocket();
   const [title, setTitle] = useState(contract ? contract.title : "");
   const [clientName, setClientName] = useState(
     contract ? contract.clientName : ""
@@ -38,8 +39,23 @@ export default function ContractDialog({
   const [dataType, setDataType] = useState<DataType>(
     contract ? contract.dataType : "text"
   );
-  const handleOnclick = () => {
-    console.log(JSON.parse(data));
+  const handleUpdate = async() => {
+    const payload = {
+        status,
+        title,
+        clientName,
+        dataType,
+        data
+    }
+    try{
+        const resp = await axios.put(`http://localhost:3000/api/update/${contract?.id}`,payload);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'update', id : resp.data.id }));
+        }
+        setIsOpen(false);
+    } catch(e){
+        console.log(e)
+    }
   }
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,8 +90,8 @@ export default function ContractDialog({
         title
     }
     try{
-        const resp = await axios.post('http://localhost:3000/api/create',payload);
-        console.log("resp",resp)
+        await axios.post('http://localhost:3000/api/create',payload);
+        window.location.reload();
     }
     catch(e){
         console.log(e)
@@ -148,7 +164,6 @@ export default function ContractDialog({
                 className="bg-gray-700 text-gray-100 placeholder-gray-400 border-gray-600"
               />
             </div>
-            {/* Input file button which allows selection txt and json files and after selecting it copies the text or json from file to data state which gets shown in the monaco editor */}
           </div>
           <div className="w-[60%] flex flex-col gap-4 h-full">
             <Label className="text-gray-100">Contract Data</Label>
@@ -169,7 +184,7 @@ export default function ContractDialog({
           </div>
         </div>
         <DialogFooter className="">
-          <Button onClick={type === "create" ? handleCreate : handleOnclick}>Save changes</Button>
+          <Button onClick={type === "create" ? handleCreate : handleUpdate}>Save changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -21,8 +21,6 @@ export const FilterBar = ({
   statusFilter,
   setStatusFilter,
 }: FilterBarProps) => {
-  //   const [searchQuery,setSearchQuery] = useState('');
-  //   const [statusFilter,setStatusFilter] = useState<ContractStatus | 'all'>('all')
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">

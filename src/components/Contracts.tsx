@@ -10,20 +10,47 @@ import {
   TableRow,
 } from "./ui/table";
 import { formatTimestamp } from "@/lib/helper";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 import ContractDialog from "./ContractModal";
 import { useState } from "react";
+import axios from "axios";
+import { useSocket } from "@/hooks/useSockets";
 
 export const ContractTable = ({ contracts }: { contracts: Contract[] }) => {
-    const [selectedContract,setSelectedContract] = useState<Contract | null>(null);
-    const [isModalOpen,setIsModalOpen] = useState(false);
+  const socket = useSocket();
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(
+    null
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleDelete = async (id: string) => {
+    try {
+      await axios.delete(`http://localhost:3000/api/delete/${id}`);
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'delete', id }));
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
   return (
     <div className="w-full">
-        {selectedContract && <ContractDialog isOpen={isModalOpen} setIsOpen={setIsModalOpen} type="update" contract={selectedContract} />}
+      {selectedContract && (
+        <ContractDialog
+          isOpen={isModalOpen}
+          setIsOpen={setIsModalOpen}
+          type="update"
+          contract={selectedContract}
+        />
+      )}
       <Table>
         <TableHeader>
-          <TableRow className="hover:bg-transparent" >
+          <TableRow className="hover:bg-transparent">
             <TableHead>Contract ID</TableHead>
             <TableHead>Title</TableHead>
             <TableHead>Client Name</TableHead>
@@ -50,8 +77,21 @@ export const ContractTable = ({ contracts }: { contracts: Contract[] }) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => { setSelectedContract(con);setIsModalOpen(true)}} >Edit </DropdownMenuItem>
-                    <DropdownMenuItem>Delete</DropdownMenuItem>
+                    <DropdownMenuItem
+                      className=" cursor-pointer"
+                      onClick={() => {
+                        setSelectedContract(con);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      Edit{" "}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className=" cursor-pointer"
+                      onClick={async () => await handleDelete(con.id)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
