@@ -15,6 +15,7 @@ import { SelectValue } from "@radix-ui/react-select";
 import { Editor } from "@monaco-editor/react";
 import axios from "axios";
 import { useSocket } from "@/hooks/useSockets";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ContractDialog({
   type,
@@ -24,10 +25,11 @@ export default function ContractDialog({
 }: {
   type: "update" | "create";
   contract?: Contract;
-  isOpen : boolean;
-  setIsOpen : (e : boolean) => void,
+  isOpen: boolean;
+  setIsOpen: (e: boolean) => void;
 }) {
   const socket = useSocket();
+  const { toast } = useToast();
   const [title, setTitle] = useState(contract ? contract.title : "");
   const [clientName, setClientName] = useState(
     contract ? contract.clientName : ""
@@ -39,24 +41,46 @@ export default function ContractDialog({
   const [dataType, setDataType] = useState<DataType>(
     contract ? contract.dataType : "text"
   );
-  const handleUpdate = async() => {
+  const handleUpdate = async () => {
     const payload = {
-        status,
-        title,
-        clientName,
-        dataType,
-        data
-    }
-    try{
-        const resp = await axios.put(`http://localhost:3000/api/update/${contract?.id}`,payload);
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'update', id : resp.data.id }));
+      status,
+      title,
+      clientName,
+      dataType,
+      data,
+    };
+    try {
+      if(clientName === "" || title === ""){
+        toast({
+          title: "Cannot submit empty fields",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (dataType === "json") {
+        try {
+          JSON.parse(data);
+        } catch (e) {
+          console.log(e);
+          toast({
+            title: "Incorrect JSON format",
+            variant: "destructive",
+          });
+          return;
         }
-        setIsOpen(false);
-    } catch(e){
-        console.log(e)
+      }
+      const resp = await axios.put(
+        `${import.meta.env.VITE_BACKEND_IP_ADDRESS}/api/update/${contract?.id}`,
+        payload
+      );
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "update", id: resp.data.id }));
+      }
+      setIsOpen(false);
+    } catch (e) {
+      console.log(e);
     }
-  }
+  };
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -68,9 +92,9 @@ export default function ContractDialog({
           setDataType("json");
           try {
             const json = JSON.parse(content);
-            content = JSON.stringify(json, null, 2); 
+            content = JSON.stringify(json, null, 2);
           } catch (e) {
-            console.error("Invalid JSON file",e);
+            console.error("Invalid JSON file", e);
           }
         } else if (fileType === "text/plain") {
           setDataType("text");
@@ -84,19 +108,37 @@ export default function ContractDialog({
 
   const handleCreate = async () => {
     const payload = {
-        dataType,
-        data,
-        clientName,
-        title
+      dataType,
+      data,
+      clientName,
+      title,
+    };
+    try {
+      if(clientName === "" || title === ""){
+        toast({
+          title: "Cannot submit empty fields",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (dataType === "json") {
+        try {
+          JSON.parse(data);
+        } catch (e) {
+          console.log(e);
+          toast({
+            title: "Incorrect JSON format",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      await axios.post(`${import.meta.env.VITE_BACKEND_IP_ADDRESS}/api/create`, payload);
+      window.location.reload();
+    } catch (e) {
+      console.log(e);
     }
-    try{
-        await axios.post('http://localhost:3000/api/create',payload);
-        window.location.reload();
-    }
-    catch(e){
-        console.log(e)
-    }
-  }
+  };
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="h-[90vh] border-none flex flex-col gap-8 max-w-[80vw] bg-gray-800">
@@ -108,23 +150,29 @@ export default function ContractDialog({
         <div className="flex flex-1 gap-8 w-full ">
           <div className="w-[40%] flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label title="" className="text-gray-100">Title</Label>
-              <Input 
-                className="bg-gray-700 text-gray-100 placeholder-gray-400 border-gray-600" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
+              <Label title="" className="text-gray-100">
+                Title
+              </Label>
+              <Input
+                className="bg-gray-700 text-gray-100 placeholder-gray-400 border-gray-600"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label title="" className="text-gray-100">Client Name</Label>
-              <Input 
-                className="bg-gray-700 text-gray-100 placeholder-gray-400 border-gray-600" 
-                value={clientName} 
-                onChange={(e) => setClientName(e.target.value)} 
+              <Label title="" className="text-gray-100">
+                Client Name
+              </Label>
+              <Input
+                className="bg-gray-700 text-gray-100 placeholder-gray-400 border-gray-600"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label title="" className="text-gray-100">Type</Label>
+              <Label title="" className="text-gray-100">
+                Type
+              </Label>
               <Select
                 value={dataType}
                 onValueChange={(e: DataType) => setDataType(e)}
@@ -140,7 +188,9 @@ export default function ContractDialog({
             </div>
             {type === "update" && (
               <div>
-                <Label title="" className="text-gray-100">Status</Label>
+                <Label title="" className="text-gray-100">
+                  Status
+                </Label>
                 <Select
                   value={status}
                   onValueChange={(e: ContractStatus) => setStatus(e)}
@@ -156,7 +206,9 @@ export default function ContractDialog({
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <Label title="" className="text-gray-100">Upload File</Label>
+              <Label title="" className="text-gray-100">
+                Upload File
+              </Label>
               <Input
                 type="file"
                 accept=".txt, .json"
@@ -184,7 +236,9 @@ export default function ContractDialog({
           </div>
         </div>
         <DialogFooter className="">
-          <Button onClick={type === "create" ? handleCreate : handleUpdate}>Save changes</Button>
+          <Button onClick={type === "create" ? handleCreate : handleUpdate}>
+            Save changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

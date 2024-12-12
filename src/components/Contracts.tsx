@@ -18,7 +18,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 import ContractDialog from "./ContractModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSocket } from "@/hooks/useSockets";
 
@@ -30,14 +30,19 @@ export const ContractTable = ({ contracts }: { contracts: Contract[] }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/api/delete/${id}`);
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      await axios.delete(`${import.meta.env.VITE_BACKEND_IP_ADDRESS}/api/delete/${id}`);
+      if (socket) {
         socket.send(JSON.stringify({ type: 'delete', id }));
       }
     } catch (e) {
       console.log(e);
     }
   };
+  useEffect(() => {
+    if(!isModalOpen){
+      setSelectedContract(null);
+    }
+  },[isModalOpen])
   return (
     <div className="w-full">
       {selectedContract && (
