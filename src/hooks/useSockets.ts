@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 
-
-const WS_URL = "ws://localhost:3000/ws/notification"
+const WS_URL = `${import.meta.env.VITE_BACKEND_WS_ADDRESS}/ws/notification`
 
 export const useSocket = () => {
     const [socket, setSocket] = useState<WebSocket | null>(null);
